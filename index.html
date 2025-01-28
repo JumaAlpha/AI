@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .chat-container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .message { margin-bottom: 15px; }
+        .message input { width: 80%; padding: 10px; }
+        .message button { padding: 10px; }
+        .response { background-color: #f1f1f1; padding: 10px; border-radius: 5px; margin-top: 10px; }
+        .user-message { text-align: right; }
+        .bot-response a { color: blue; text-decoration: underline; }
+        .history { margin-top: 20px; }
+        .history button { padding: 10px; }
+        .history-item { border-bottom: 1px solid #ccc; padding: 10px 0; }
+        .learn-form { margin-top: 20px; }
+        .learn-form input { width: 40%; padding: 10px; margin: 5px; }
+        .learn-form button { padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div id="chat"></div>
+        <div class="message">
+            <input type="text" id="message-input" placeholder="Type a message">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+        <div class="history">
+            <button onclick="loadHistory()">Load Search History</button>
+            <div id="history-list"></div>
+        </div>
+        <div class="learn-form">
+            <input type="text" id="learn-query" placeholder="Query">1
+            <input type="text" id="learn-response" placeholder="Response">
+            <button onclick="learnResponse()">Teach Bot</button>
+        </div>
+    </div>
+    <script>
+        async function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const chat = document.getElementById('chat');
+            const userMessage = messageInput.value.trim();
+            if (!userMessage) return;
+
+            // Display user's message
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'response user-message';
+            userMessageDiv.textContent = `You: ${userMessage}`;
+            chat.appendChild(userMessageDiv);
+
+            messageInput.value = '';
+
+            try {
+                const response = await fetch('http://localhost:3000/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userMessage })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const botResponseDiv = document.createElement('div');
+                botResponseDiv.className = 'response bot-response';
+                botResponseDiv.textContent = data.response;
+                chat.appendChild(botResponseDiv);
+            } catch (error) {
+                console.error('Error:', error);
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'response bot-response';
+                errorDiv.textContent = `Error: ${error.message}`;
+                chat.appendChild(errorDiv);
+            }
+        }
+
+        async function loadHistory() {
+            const historyList = document.getElementById('history-list');
+            historyList.innerHTML = '';
+
+            try {
+                const response = await fetch('http://localhost:3000/history');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                data.forEach(item => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    historyItem.innerHTML = `
+                        <div><strong>User:</strong> ${item.user_message}</div>
+                        <div><strong>Bot:</strong> ${item.bot_response}</div>
+                        <div><em>${new Date(item.created_at).toLocaleString()}</em></div>
+                    `;
+                    historyList.appendChild(historyItem);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                const errorDiv = document.createElement('div');
+                errorDiv.textContent = `Error: ${error.message}`;
+                historyList.appendChild(errorDiv);
+            }
+        }
+
+        async function learnResponse() {
+            const learnQuery = document.getElementById('learn-query').value.trim();
+            const learnResponse = document.getElementById('learn-response').value.trim();
+
+            if (!learnQuery || !learnResponse) return;
+
+            try {
+                const response = await fetch('http://localhost:3000/learn', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: learnQuery, response: learnResponse })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                alert(data.message);
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
